@@ -7,17 +7,31 @@
 #include "led.h"
 #include "gic.h"		/* interrupt controller interface */
 #include "io.h"
+#include "xuartps_hw.h"
 
-static XUartPs uart;
-static bool done;
+static XUartPs uart1;
+static bool done = false;
 
 void getLine (char *str);
 void callback(u32 led_num){
 	led_toggle(led_num);
+	if (led_num == 3){
+		done = true;
+	}
 }
 
-void handler(void *callBackRef, u32 event, unsigned int eventData){
+void uart_handler(void *callBackRef, u32 event, unsigned int eventData){
+	if(event == XUARTPS_EVENT_RECV_DATA){
+		u8 buffer;
+		u32 numBytes_requested = 1;
 
+		XUartPs_Recv(&uart1, &buffer, numBytes_requested);
+		XUartPs_Send(&uart1, &buffer, numBytes_requested);
+		if (buffer == (u8) '\r'){
+			buffer = (u8) '\n';
+			XUartPs_Send(&uart1, &buffer, numBytes_requested);
+		}
+	}
 }
 
 int main()
@@ -32,17 +46,15 @@ int main()
 
 		XUartPs_Config * ConfigPtr;
 		ConfigPtr = XUartPs_LookupConfig(XPAR_PS7_UART_1_DEVICE_ID);
-		if (XUartPs_CfgInitialize(&uart,  ConfigPtr, ConfigPtr->BaseAddress) == XST_SUCCESS){
-			u32 baudRate = 9600;
-			if (XUartPs_SetBaudRate(&uart, baudRate) ==  XST_SUCCESS){
-				u8 triggerLevel = 1;
-				XUartPs_SetFifoThreshold(&uart, triggerLevel);
-				XUartPs_SetInterruptMask(&uart, XPAR_XUARTPS_1_INTR);
-//				XUartPs_SetHandler(&uart, XUartPs_Handler FuncPtr, void *CallBackRef);
-				XUartPs_SetHandler(&uart, handler, void *CallBackRef);
-				u32 XUartPs_Send(&uart,u8 *BufferPtr,u32 NumBytes);
-				u32 XUartPs_Recv(&uart,u8 *BufferPtr,u32 NumBytes);
-			}
+		if (XUartPs_CfgInitialize(&uart1,  ConfigPtr, ConfigPtr->BaseAddress) == XST_SUCCESS){
+
+			u8 triggerLevel = 1;
+			XUartPs_SetFifoThreshold(&uart1, triggerLevel);
+
+
+			XUartPs_SetInterruptMask(&uart1, XUARTPS_IXR_RXOVR);
+			XUartPs_SetHandler(&uart1, (XUartPs_Handler) uart_handler, &uart1);
+			gic_connect(XPAR_XUARTPS_1_INTR, (Xil_InterruptHandler) XUartPs_InterruptHandler, &uart1);
 
 		}
 	}
@@ -58,7 +70,7 @@ int main()
 
 	io_btn_close();
 	io_sw_close();
-	XUartPs_DisableUart(&uart);
+	XUartPs_DisableUart(&uart1);
 	gic_close();
 	cleanup_platform();
 	return 0;
