@@ -1,41 +1,68 @@
 #include "wifi.h"
 
-
 static XUartPs uart1;
 static XUartPs uart0;
-static u32 numBytes_requested = 1;
 
 static int STATE;
+static u8 long_buffer[30];
+static int buffer_counter = 0;
+static int numBytes_requested = 1;
 
-typedef struct ping {
-	int type; /* must be assigned to PING*/
-	int id; /* must be assigned to your id */
+typedef struct ping{
+	int type; // assigned to ping
+	int id; // assigned to our id on the class roaster
 } ping_t;
+
+
+
+void send_ping(){
+
+	ping_t p;
+	p.type = TYPE;
+	p.id = ID;
+
+	XUartPs_Send(&uart0, (u8*) &p, sizeof(ping_t));
+}
 
 void set_state(int s){
 	STATE = s;
 }
 
-/*
- * uart0 handler
- */
-static void uart0_handler(void *callBackRef, u32 event, unsigned int eventData){ //Wi-Fly
-	XUartPs * uart0 = (XUartPs *) callBackRef;
 
+// uart 0 handler function
+static void uart0_handler(void *callBackRef, u32 event, unsigned int eventData){ // Wi-fly
 	if(event == XUARTPS_EVENT_RECV_DATA){
 		u8 buffer;
+		u32 numBytes_requested = 1;
+
+
+
+		XUartPs *uart0 = (XUartPs*)callBackRef;
 
 		XUartPs_Recv(uart0, &buffer, numBytes_requested);
+
 		if (STATE == CONFIGURE){
 			XUartPs_Send(&uart1, &buffer, numBytes_requested);
 		}
+
+		if (STATE == PING){
+			XUartPs_Recv(uart0, &buffer, numBytes_requested);
+			long_buffer[buffer_counter] = buffer;
+			buffer_counter += 1;
+			if (buffer_counter == 8){
+				ping_t* p = (ping_t *) long_buffer;
+				buffer_counter = 0;
+				printf("[PING %d]\n\r", p->id);
+			}
+		}
+
 	}
 }
 
 /*
  * uart1 handler
  */
-static void uart1_handler(void *callBackRef, u32 event, unsigned int eventData){ //Terminal
+static void uart1_handler(void *callBackRef, u32 event, unsigned int eventData){ //Terminal, This is done
 	XUartPs * uart1 = (XUartPs *) callBackRef;
 
 	if(event == XUARTPS_EVENT_RECV_DATA){

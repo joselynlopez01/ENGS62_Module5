@@ -22,6 +22,7 @@ void callback(u32 led_num){
 
 	} else if (led_num == PING){
 		set_state(PING);
+		send_ping();
 		printf("[PING]\n\r");
 		fflush(stdout);
 

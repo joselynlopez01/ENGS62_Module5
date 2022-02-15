@@ -16,6 +16,9 @@
 #define PING 1
 #define UPDATE 2
 
+#define ID 12
+#define TYPE 1
+
 typedef struct ping ping_t;
 
 /*
@@ -30,3 +33,5 @@ void wifi_close(void);
 
 
 void set_state(int s);
+
+void send_ping (void);
