@@ -1,4 +1,6 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include "platform.h"
 #include "xil_printf.h"
 #include <unistd.h>
@@ -11,6 +13,17 @@
 #include "wifi.h"
 
 static bool done = false;
+//u8 buff[30];
+
+void wifi_callback(void *buffer){
+
+	char * sbuff = (char*) buffer;
+	int value = atoi(sbuff);
+	printf("the buffer is %d\n", *((int*)buffer));
+	printf("the value is %d\n",value);
+	send_update(value);
+	set_state(UPDATE);
+}
 
 void callback(u32 led_num){
 	led_toggle(led_num);
@@ -27,10 +40,10 @@ void callback(u32 led_num){
 		fflush(stdout);
 
 	} else if (led_num == UPDATE){
-		set_state(UPDATE);
+		printf("Button interrupt\n\r");
+		set_state(READ);
 		printf("[UPDATE]\n\r");
 		fflush(stdout);
-
 	} else if (led_num == 3){
 		done = true;
 	}
@@ -45,7 +58,7 @@ int main()
 	if (gic_init() == XST_SUCCESS){
 		io_btn_init(callback);
 		io_sw_init(callback);
-		wifi_init();
+		wifi_init(wifi_callback);
 	}  else {
 		printf("GIC cannot connect");
 		fflush(stdout);
