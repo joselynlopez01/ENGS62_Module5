@@ -11,16 +11,16 @@
 #include "io.h"
 #include "xuartps_hw.h"
 #include "wifi.h"
+#include "servo.h"
+#include "adc.h"
 
 static bool done = false;
-//u8 buff[30];
+static float pot_value;
 
 void wifi_callback(void *buffer){
 
 	char * sbuff = (char*) buffer;
 	int value = atoi(sbuff);
-	printf("the buffer is %d\n", *((int*)buffer));
-	printf("the value is %d\n",value);
 	send_update(value);
 	set_state(UPDATE);
 }
@@ -41,7 +41,11 @@ void callback(u32 led_num){
 
 	} else if (led_num == UPDATE){
 		printf("Button interrupt\n\r");
-		set_state(READ);
+//		set_state(READ);
+		pot_value = adc_get_pot();
+		pot_value = 100 * pot_value;
+		send_update(pot_value);
+		set_state(UPDATE);
 		printf("[UPDATE]\n\r");
 		fflush(stdout);
 	} else if (led_num == 3){
@@ -59,6 +63,8 @@ int main()
 		io_btn_init(callback);
 		io_sw_init(callback);
 		wifi_init(wifi_callback);
+		servo_init();
+		adc_init();
 	}  else {
 		printf("GIC cannot connect");
 		fflush(stdout);

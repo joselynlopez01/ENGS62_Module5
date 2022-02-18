@@ -1,7 +1,9 @@
 #include "wifi.h"
+#include "servo.h"
 
 static XUartPs uart1;
 static XUartPs uart0;
+static double dutycycle = 6.5;
 
 static int STATE;
 static u8 long_buffer[200];
@@ -82,6 +84,8 @@ static void uart0_handler(void *callBackRef, u32 event, unsigned int eventData){
 				update_response_t* u = (update_response_t *) long_buffer;
 				buffer_counter = 0;
 				printf("[UPDATE ID: %d, AVG: %d]\n\r", u->id, u->average);
+				dutycycle = (0.045)*(u->values[12])+4.25;
+				servo_set(dutycycle);
 			}
 		}
 	}
